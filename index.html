@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf8" />
+    <title>Elm Toy Robot</title>
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.3.0/milligram.min.css"
+      integrity="sha256-Ro/wP8uUi8LR71kwIdilf78atpu8bTEwrK5ZotZo+Zc="
+      crossorigin="anonymous"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script src="dist/bundle.js"></script>
+    <script>
+      var Elm = Elm.Main.init({
+        node: document.getElementById("root")
+      });
+    </script>
+  </body>
+</html>

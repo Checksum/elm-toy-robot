@@ -1,5 +1,6 @@
-module Robot exposing (Grid(..), Msg(..), Robot(..), State, init, update)
+module Robot exposing (Command(..), Grid(..), Msg(..), Robot(..), State, init, parseCommand, update)
 
+import Parser as P exposing ((|.), (|=))
 import Regex
 
 
@@ -183,68 +184,65 @@ report robot =
             "Robot not placed yet"
 
 
-command : Regex.Regex
-command =
-    Maybe.withDefault Regex.never <|
-        Regex.fromStringWith { caseInsensitive = True, multiline = False } <|
-            "^((PLACE)\\s+(\\d+)\\s*,\\s*(\\d+)\\s*,\\s*(NORTH|SOUTH|EAST|WEST)|LEFT|RIGHT|MOVE|REPORT)$"
-
-
 parseCommand : String -> Command
-parseCommand cmdString =
-    let
-        match =
-            Regex.find command cmdString
-                |> List.map .submatches
-                |> List.map (List.filterMap identity)
-                |> List.head
-                |> Maybe.withDefault []
-    in
-    case match of
-        cmd :: rest ->
-            case cmd of
-                "RIGHT" ->
-                    Rotate Right
+parseCommand str =
+    case P.run commandParser str of
+        Ok command ->
+            command
 
-                "LEFT" ->
-                    Rotate Left
-
-                "MOVE" ->
-                    Move
-
-                "REPORT" ->
-                    Report
-
-                "PLACE" ->
-                    placeFromRegexMatch rest
-
-                _ ->
-                    UnknownCommand
-
-        _ ->
+        Err _ ->
             UnknownCommand
 
 
-placeFromRegexMatch : List String -> Command
-placeFromRegexMatch params =
-    case params of
-        p1 :: p2 :: dir :: [] ->
-            let
-                maybePoint =
-                    parsePoint p1 p2
+commandParser : P.Parser Command
+commandParser =
+    P.oneOf
+        [ -- Move
+          P.succeed Move
+            |. P.keyword "MOVE"
 
-                maybeDirection =
-                    parseDirection dir
-            in
-            case ( maybePoint, maybeDirection ) of
-                ( Just point, Just direction ) ->
-                    Place point direction
+        -- Report
+        , P.succeed Report
+            |. P.keyword "REPORT"
 
-                _ ->
-                    UnknownCommand
+        -- Rotate
+        , P.succeed Rotate
+            |= P.oneOf
+                [ P.succeed Left
+                    |. P.keyword "LEFT"
+                , P.succeed Right
+                    |. P.keyword "RIGHT"
+                ]
 
-        _ ->
-            UnknownCommand
+        -- Place
+        , P.succeed Place
+            |. P.keyword "PLACE"
+            |. P.spaces
+            |= P.oneOf
+                [ P.succeed Point
+                    |= P.int
+                    |. P.spaces
+                    |. P.symbol ","
+                    |. P.spaces
+                    |= P.int
+                ]
+            |. P.spaces
+            |. P.symbol ","
+            |. P.spaces
+            |= P.oneOf
+                [ P.succeed North
+                    |. P.keyword "NORTH"
+                , P.succeed South
+                    |. P.keyword "SOUTH"
+                , P.succeed East
+                    |. P.keyword "EAST"
+                , P.succeed West
+                    |. P.keyword "WEST"
+                ]
+
+        -- Unknown
+        , P.succeed UnknownCommand
+        ]
 
 
 type alias State =
@@ -262,6 +260,6 @@ type Msg
     = Dispatch String
 
 
-update : Command -> State -> State
-update cmd state =
-    state
+update : Command -> { a | grid : Grid, robot : Robot } -> State
+update cmd { grid, robot } =
+    { grid = grid, robot = robot }
