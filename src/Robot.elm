@@ -1,30 +1,12 @@
-module Robot exposing (Command(..), Grid(..), Msg(..), Robot(..), State, init, parseCommand, update)
+module Robot exposing (Command(..), Direction(..), Grid, Robot(..), RobotResult(..), init, run, update)
 
 import Parser as P exposing ((|.), (|=))
-import Regex
 
 
 type alias Point =
     { x : Int
     , y : Int
     }
-
-
-parsePoint : String -> String -> Maybe Point
-parsePoint xStr yStr =
-    let
-        xInt =
-            String.toInt xStr
-
-        yInt =
-            String.toInt yStr
-    in
-    case ( xInt, yInt ) of
-        ( Just x, Just y ) ->
-            Just (Point x y)
-
-        _ ->
-            Nothing
 
 
 pointToString : Maybe Point -> String
@@ -42,25 +24,6 @@ type Direction
     | West
     | North
     | South
-
-
-parseDirection : String -> Maybe Direction
-parseDirection str =
-    case String.toUpper str of
-        "EAST" ->
-            Just East
-
-        "WEST" ->
-            Just West
-
-        "NORTH" ->
-            Just North
-
-        "SOUTH" ->
-            Just South
-
-        _ ->
-            Nothing
 
 
 directionToString : Maybe Direction -> String
@@ -129,8 +92,10 @@ type Command
     | UnknownCommand
 
 
-type Grid
-    = Grid ( Int, Int )
+type alias Grid =
+    { width : Int
+    , height : Int
+    }
 
 
 type Robot
@@ -138,8 +103,22 @@ type Robot
     | Unplaced
 
 
-rotate : Rotation -> Robot -> Robot
-rotate rotation robot =
+place : Grid -> Robot -> Point -> Direction -> Robot
+place grid robot point direction =
+    case robot of
+        Unplaced ->
+            if point.x < grid.width && point.y < grid.height then
+                Placed point direction
+
+            else
+                robot
+
+        _ ->
+            robot
+
+
+rotate : Grid -> Robot -> Rotation -> Robot
+rotate grid robot rotation =
     case robot of
         Placed position direction ->
             let
@@ -160,22 +139,31 @@ rotate rotation robot =
             robot
 
 
-move : Robot -> Robot
-move robot =
+move : Grid -> Robot -> Robot
+move grid robot =
     case robot of
         Placed position direction ->
             let
                 { moveStep } =
                     directionMap direction
+
+                newPosition =
+                    moveStep position
+
+                x =
+                    clamp 0 grid.width newPosition.x
+
+                y =
+                    clamp 0 grid.height newPosition.y
             in
-            Placed (moveStep position) direction
+            Placed { x = x, y = y } direction
 
         Unplaced ->
             robot
 
 
-report : Robot -> String
-report robot =
+report : Grid -> Robot -> String
+report grid robot =
     case robot of
         Placed point direction ->
             "Robot at " ++ pointToString (Just point) ++ " facing " ++ directionToString (Just direction)
@@ -245,21 +233,51 @@ commandParser =
         ]
 
 
-type alias State =
-    { grid : Grid
-    , robot : Robot
-    }
+type RobotResult
+    = UpdatedRobot Robot
+    | RobotReport String
 
 
-init : ( Int, Int ) -> State
+init : ( Int, Int ) -> { grid : Grid, robot : Robot }
 init ( width, height ) =
-    { grid = Grid ( width, height ), robot = Unplaced }
+    { grid = { width = width, height = height }, robot = Unplaced }
 
 
-type Msg
-    = Dispatch String
-
-
-update : Command -> { a | grid : Grid, robot : Robot } -> State
+update : Command -> { a | grid : Grid, robot : Robot } -> RobotResult
 update cmd { grid, robot } =
-    { grid = grid, robot = robot }
+    case robot of
+        Placed _ _ ->
+            case cmd of
+                Rotate rotation ->
+                    UpdatedRobot (rotate grid robot rotation)
+
+                Move ->
+                    UpdatedRobot (move grid robot)
+
+                Report ->
+                    RobotReport (report grid robot)
+
+                _ ->
+                    UpdatedRobot robot
+
+        Unplaced ->
+            case cmd of
+                Place point direction ->
+                    UpdatedRobot (place grid robot point direction)
+
+                _ ->
+                    RobotReport (report grid robot)
+
+
+run : { a | grid : Grid, robot : Robot } -> String -> Result String RobotResult
+run { grid, robot } input =
+    let
+        command =
+            parseCommand input
+    in
+    case command of
+        UnknownCommand ->
+            Err ("Unknown or invalid command: " ++ input)
+
+        _ ->
+            Ok (update command { robot = robot, grid = grid })
