@@ -1,11 +1,11 @@
 module Main exposing (main)
 
 import Browser
-import Html exposing (Html, button, div, fieldset, form, input, label, p, text)
-import Html.Attributes exposing (autofocus, class, for, placeholder, required, style, type_, value)
+import Html exposing (Html, a, button, div, fieldset, form, h1, h6, hr, input, label, li, p, text, ul)
+import Html.Attributes exposing (autofocus, class, for, href, placeholder, required, style, target, type_, value)
 import Html.Events exposing (onInput, onSubmit)
 import Robot exposing (Grid, Robot)
-import Svg exposing (defs, path, pattern, rect, svg, g)
+import Svg exposing (defs, g, path, pattern, rect, svg)
 import Svg.Attributes as Attr
 
 
@@ -55,7 +55,7 @@ update msg model =
                 canonical =
                     String.toUpper (String.trim model.command)
 
-                ( robot, history ) =
+                ( robot, historyEntry ) =
                     case Robot.run model canonical of
                         Ok result ->
                             case result of
@@ -68,20 +68,54 @@ update msg model =
                         Err error ->
                             ( model.robot, error )
             in
-            { model | command = "", history = history :: model.history, robot = robot }
+            { model | command = "", history = historyEntry :: model.history, robot = robot }
 
 
 view : Model -> Html Msg
 view model =
-    div [ class "container" ]
+    div [ class "container", style "paddingTop" "6rem" ]
         [ div [ class "row" ]
-            [ div [ class "column column-50 column-offset-25" ]
-                [ formView model
-                , div [ class "clearfix" ]
-                    [ div [ class "float-left" ] [ historyView model ]
-                    , div [ class "float-right" ] [ gridView model ]
+            [ div [ class "column column-25" ] [ readmeView model ]
+            , div [ class "column column-50", style "padding" "0 2rem" ]
+                [ div [ class "row" ]
+                    [ div [ class "column" ] [ formView model ] ]
+                , div [ class "row" ]
+                    [ div [ class "column" ] [ historyView model ] ]
+                ]
+            , div [ class "column column-25" ]
+                [ div [ class "row" ]
+                    [ div [ class "column" ]
+                        [ gridView model ]
                     ]
                 ]
+            ]
+        ]
+
+
+readmeView : Model -> Html Msg
+readmeView model =
+    div []
+        [ h1
+            [ style "text-transform" "uppercase"
+            , style "max-width" "min-content"
+            , style "font-size" "3.5rem"
+            ]
+            [ text "Elm Toy Robot" ]
+        , hr [ style "border-color" "#d1d1d1" ] []
+        , h6 [ style "text-transform" "uppercase" ] [ text "Commands" ]
+        , ul [ style "line-height" "1.6rem" ]
+            [ li [] [ text "Place x, y, direction" ]
+            , li [] [ text "Move (M)" ]
+            , li [] [ text "Left (L)" ]
+            , li [] [ text "Right (R)" ]
+            , li [] [ text "Report" ]
+            ]
+        , hr [ style "border-color" "#d1d1d1" ] []
+        , h6 [ style "text-transform" "uppercase" ] [ text "About" ]
+        , p []
+            [ text "A simple programming puzzle usually used as a part of the interview process. A good description "
+            , a [ href "https://github.com/dctr/rea-robot/blob/master/PROBLEM.md", target "_blank" ] [ text "here" ]
+            , text "."
             ]
         ]
 
@@ -91,7 +125,13 @@ formView model =
     form [ onSubmit OnCommandSubmit ]
         [ fieldset []
             [ input
-                [ type_ "text", onInput OnCommandInput, placeholder "Place 3, 4, North", required True, autofocus True, value model.command ]
+                [ type_ "text"
+                , onInput OnCommandInput
+                , placeholder "Enter a command: Place 3, 4, North"
+                , required True
+                , autofocus True
+                , value model.command
+                ]
                 []
             , button [ type_ "submit", style "display" "none" ] [ text "Submit" ]
             ]
@@ -113,48 +153,68 @@ historyView model =
 gridView : Model -> Html Msg
 gridView model =
     let
-        width =
+        cellWidth =
             30
 
-        cell =
-            String.fromInt width
+        cellWidthStr =
+            String.fromInt cellWidth
 
         gridWidth =
-            String.fromInt ((width * model.grid.width) + 1)
+            String.fromInt ((cellWidth * model.grid.width) + 1)
 
-        center = ((toFloat width * toFloat model.grid.width) + 1) / 2
+        center =
+            ((toFloat cellWidth * toFloat model.grid.width) + 1) / 2
 
-        rotate = "rotate(-90 " ++ String.fromFloat center ++ " " ++ String.fromFloat center ++ ")"
+        rotate =
+            "rotate(-90 " ++ String.fromFloat center ++ " " ++ String.fromFloat center ++ ")"
     in
-    svg [ Attr.width gridWidth, Attr.height gridWidth, Attr.viewBox ("0 0 " ++ gridWidth ++ " " ++ gridWidth) ]
+    svg
+        [ Attr.width gridWidth
+        , Attr.height gridWidth
+        , Attr.viewBox ("0 0 " ++ gridWidth ++ " " ++ gridWidth)
+        , style "display" "block"
+        , style "margin" "0 auto"
+        ]
         [ defs []
-            [ pattern [ Attr.id "grid", Attr.width cell, Attr.height cell, Attr.patternUnits "userSpaceOnUse" ]
-                [ path [ Attr.d ("M " ++ cell ++ " 0 L 0 0 0 " ++ cell), Attr.fill "none", Attr.stroke "#333", Attr.strokeWidth "1" ] []
+            [ pattern
+                [ Attr.id "grid"
+                , Attr.width cellWidthStr
+                , Attr.height cellWidthStr
+                , Attr.patternUnits "userSpaceOnUse"
+                ]
+                [ path
+                    [ Attr.d ("M " ++ cellWidthStr ++ " 0 L 0 0 0 " ++ cellWidthStr)
+                    , Attr.fill "none"
+                    , Attr.stroke "#333"
+                    , Attr.strokeWidth "1"
+                    ]
+                    []
                 ]
             ]
-        , g [  Attr.transform rotate ]
+        , g [ Attr.transform rotate ]
             [ rect [ Attr.width "100%", Attr.height "100%", Attr.fill "url(#grid)" ] []
-            , robotView model width
+            , robotView model cellWidth
             ]
         ]
 
 
 robotView : Model -> Int -> Html Msg
-robotView model cell =
+robotView model cellWidth =
     case model.robot of
         Robot.Unplaced ->
             Html.text ""
 
         Robot.Placed position direction ->
             let
-                padding = 5
+                padding =
+                    5
 
                 -- bottom left point of cell
                 -- Since the entire svg is rotated 90 degrees,
                 -- the x and y positions are swapped
                 cellOrigin =
-                    { y = (position.x * cell) + padding
-                    , x = (position.y * cell) + padding
+                    { y = (position.x * cellWidth) + padding
+                    , x = (position.y * cellWidth) + padding
                     }
 
                 cellOriginStr =
@@ -162,12 +222,19 @@ robotView model cell =
                     , y = String.fromInt cellOrigin.y
                     }
 
-                svgPath = String.join " "
-                    [ "M", cellOriginStr.x, cellOriginStr.y
-                    , "L", cellOriginStr.x, String.fromInt (cellOrigin.y + 20)
-                    , "L", String.fromInt (cellOrigin.x + 20), String.fromInt (cellOrigin.y + 10)
-                    , "Z"
-                    ]
+                svgPath =
+                    String.join " "
+                        [ "M"
+                        , cellOriginStr.x
+                        , cellOriginStr.y
+                        , "L"
+                        , cellOriginStr.x
+                        , String.fromInt (cellOrigin.y + 20)
+                        , "L"
+                        , String.fromInt (cellOrigin.x + 20)
+                        , String.fromInt (cellOrigin.y + 10)
+                        , "Z"
+                        ]
 
                 deg =
                     case direction of
@@ -184,7 +251,7 @@ robotView model cell =
                             "270"
 
                 rotation =
-                    "rotate(" ++ String.join " " [ deg, String.fromInt (cellOrigin.x + 10), String.fromInt (cellOrigin.y + 10)  ] ++ ")"
+                    "rotate(" ++ String.join " " [ deg, String.fromInt (cellOrigin.x + 10), String.fromInt (cellOrigin.y + 10) ] ++ ")"
             in
             path
                 [ Attr.d svgPath

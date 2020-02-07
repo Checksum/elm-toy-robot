@@ -104,11 +104,11 @@ type Robot
 
 
 place : Grid -> Robot -> Point -> Direction -> Robot
-place grid robot point direction =
+place grid robot position direction =
     case robot of
         Unplaced ->
-            if point.x < grid.width && point.y < grid.height then
-                Placed point direction
+            if position.x < grid.width && position.y < grid.height then
+                Placed position direction
 
             else
                 robot
@@ -165,8 +165,8 @@ move grid robot =
 report : Grid -> Robot -> String
 report grid robot =
     case robot of
-        Placed point direction ->
-            "Robot at " ++ pointToString (Just point) ++ " facing " ++ directionToString (Just direction)
+        Placed position direction ->
+            "Robot at " ++ pointToString (Just position) ++ " facing " ++ directionToString (Just direction)
 
         Unplaced ->
             "Robot not placed yet"
@@ -187,7 +187,10 @@ commandParser =
     P.oneOf
         [ -- Move
           P.succeed Move
-            |. P.keyword "MOVE"
+            |. P.oneOf
+                [ P.keyword "MOVE"
+                , P.keyword "M"
+                ]
 
         -- Report
         , P.succeed Report
@@ -197,9 +200,15 @@ commandParser =
         , P.succeed Rotate
             |= P.oneOf
                 [ P.succeed Left
-                    |. P.keyword "LEFT"
+                    |. P.oneOf
+                        [ P.keyword "LEFT"
+                        , P.keyword "L"
+                        ]
                 , P.succeed Right
-                    |. P.keyword "RIGHT"
+                    |. P.oneOf
+                        [ P.keyword "RIGHT"
+                        , P.keyword "R"
+                        ]
                 ]
 
         -- Place
