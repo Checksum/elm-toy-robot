@@ -151,10 +151,10 @@ move grid robot =
                     moveStep position
 
                 x =
-                    clamp 0 grid.width newPosition.x
+                    clamp 0 (grid.width - 1) newPosition.x
 
                 y =
-                    clamp 0 grid.height newPosition.y
+                    clamp 0 (grid.height - 1) newPosition.y
             in
             Placed { x = x, y = y } direction
 

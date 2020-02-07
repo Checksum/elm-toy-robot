@@ -5,7 +5,7 @@ import Html exposing (Html, button, div, fieldset, form, input, label, p, text)
 import Html.Attributes exposing (autofocus, class, for, placeholder, required, style, type_, value)
 import Html.Events exposing (onInput, onSubmit)
 import Robot exposing (Grid, Robot)
-import Svg exposing (defs, path, pattern, rect, svg)
+import Svg exposing (defs, path, pattern, rect, svg, g)
 import Svg.Attributes as Attr
 
 
@@ -121,15 +121,21 @@ gridView model =
 
         gridWidth =
             String.fromInt ((width * model.grid.width) + 1)
+
+        center = ((toFloat width * toFloat model.grid.width) + 1) / 2
+
+        rotate = "rotate(-90 " ++ String.fromFloat center ++ " " ++ String.fromFloat center ++ ")"
     in
-    svg [ Attr.width gridWidth, Attr.height gridWidth ]
+    svg [ Attr.width gridWidth, Attr.height gridWidth, Attr.viewBox ("0 0 " ++ gridWidth ++ " " ++ gridWidth) ]
         [ defs []
             [ pattern [ Attr.id "grid", Attr.width cell, Attr.height cell, Attr.patternUnits "userSpaceOnUse" ]
                 [ path [ Attr.d ("M " ++ cell ++ " 0 L 0 0 0 " ++ cell), Attr.fill "none", Attr.stroke "#333", Attr.strokeWidth "1" ] []
                 ]
             ]
-        , rect [ Attr.width "100%", Attr.height "100%", Attr.fill "url(#grid)" ] []
-        , robotView model width
+        , g [  Attr.transform rotate ]
+            [ rect [ Attr.width "100%", Attr.height "100%", Attr.fill "url(#grid)" ] []
+            , robotView model width
+            ]
         ]
 
 
@@ -141,54 +147,50 @@ robotView model cell =
 
         Robot.Placed position direction ->
             let
-                gridW =
-                    model.grid.width
+                padding = 5
 
-                gridH =
-                    model.grid.height
+                -- bottom left point of cell
+                -- Since the entire svg is rotated 90 degrees,
+                -- the x and y positions are swapped
+                cellOrigin =
+                    { y = (position.x * cell) + padding
+                    , x = (position.y * cell) + padding
+                    }
 
-                startX =
-                    5
+                cellOriginStr =
+                    { x = String.fromInt cellOrigin.x
+                    , y = String.fromInt cellOrigin.y
+                    }
 
-                startY =
-                    gridH * cell - 5
-
-                svgPath =
-                    "M " ++ String.fromInt startX ++ " " ++ String.fromInt startY ++ " L " ++ String.fromInt startX ++ " " ++ String.fromInt (startY - 20) ++ " L 25 " ++ String.fromInt (startY - 10) ++ " Z"
-
-                x =
-                    String.fromInt (clamp 0 ((gridW - 1) * cell) ((position.x - 1) * cell))
-
-                y =
-                    String.fromInt ((position.y - 1) * cell)
-
-                translate =
-                    "translate(0 " ++ x ++ ")"
+                svgPath = String.join " "
+                    [ "M", cellOriginStr.x, cellOriginStr.y
+                    , "L", cellOriginStr.x, String.fromInt (cellOrigin.y + 20)
+                    , "L", String.fromInt (cellOrigin.x + 20), String.fromInt (cellOrigin.y + 10)
+                    , "Z"
+                    ]
 
                 deg =
                     case direction of
-                        Robot.East ->
+                        Robot.North ->
                             "0"
 
-                        Robot.South ->
+                        Robot.East ->
                             "90"
 
-                        Robot.West ->
+                        Robot.South ->
                             "180"
 
-                        Robot.North ->
+                        Robot.West ->
                             "270"
 
                 rotation =
-                    "rotate(" ++ deg ++ " " ++ String.fromInt (cell // 2) ++ " " ++ String.fromInt (startY - 10) ++ ")"
+                    "rotate(" ++ String.join " " [ deg, String.fromInt (cellOrigin.x + 10), String.fromInt (cellOrigin.y + 10)  ] ++ ")"
             in
             path
                 [ Attr.d svgPath
                 , Attr.fill "LightBlue"
                 , Attr.stroke "Blue"
                 , Attr.strokeWidth "1"
-                , Attr.transform (rotation ++ translate)
-
-                -- , Attr.transform ("rotate(" ++ rotation ++ " 15 15)" ++ " translate(" ++ x ++ " " ++ y ++ ")")
+                , Attr.transform rotation
                 ]
                 []
