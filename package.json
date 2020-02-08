@@ -4,7 +4,9 @@
     "scripts": {
         "start": "parcel index.html --no-source-maps",
         "prebuild": "rm -rf dist",
-        "build": "parcel build index.html --no-source-maps"
+        "build": "parcel build index.html --no-source-maps",
+        "precli": "parcel build src/cli.js --target node --bundle-node-modules --out-file dist/cli.js",
+        "cli": "node dist/cli.js"
     },
     "devDependencies": {
         "elm": "0.19.1-3",
