@@ -22,4 +22,4 @@ A very good explanation here - https://github.com/dctr/rea-robot/blob/master/PRO
 
 > REPORT
 
-![[git-cloc](https://git-cloc.fly.dev/cloc/checksum/elm-toy-robot/svg)](https://git-cloc.fly.dev/cloc/checksum/elm-toy-robot)
+![git-cloc](https://git-cloc.fly.dev/cloc/checksum/elm-toy-robot/svg)
